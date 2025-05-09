@@ -64,6 +64,10 @@ class ElectricField:
             c = lib.param.LIGHT_SPEED
             tdip[:,:nmo,:nmo] += -1 * mol.intor_symmetric('int1e_r_spinor', comp=3)
             tdip[:,nmo:,nmo:] += -1 * mol.intor_symmetric('int1e_sprsp_spinor', comp=3) / (2*c)**2
+        elif rt_scf._scf.istype('X2C1E_GSCF'):
+            tdip = -1 * rt_scf._scf.with_x2c.picture_change(('int1e_r_spinor', 'int1e_sprsp_spinor'))
+        elif rt_scf._scf.istype('GHF'):
+            tdip = np.tile(mol.intor_symmetric('int1e_r', comp=3), (1,2,2))
         else:
             tdip = -1 * mol.intor('int1e_r', comp=3)
         return -1 * np.einsum('xij,x->ij', tdip, energy)
