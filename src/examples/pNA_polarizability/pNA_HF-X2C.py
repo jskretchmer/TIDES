@@ -1,5 +1,5 @@
 """
-Note on X2C:
+Note on X2C
 When running
 
 >>> mol.GHF().x2c()
@@ -45,7 +45,7 @@ mol = gto.M(
  O     -2.744155  -1.090769  0.005160  
  O     -2.744074  1.090823   0.005633  
   ''',
- basis='cc-pvdz',
+    basis='sto6g',
     spin = 0,
 )
 
@@ -75,7 +75,7 @@ def _custom_dipole(rt_scf):
     dipole = rt_scf._dipole
     rt_scf._log.note(f'Total Dipole Moment [X, Y, Z] (AU): {" ".join(map(str,dipole))} \n')
     c_time = rt_scf.current_time
-    # print(f"{fn}:  t = {c_time:.1f}   {int(100*c_time/end_time)}%")
+    print(f"{fn}:  t = {c_time:.1f}   {int(100*c_time/end_time)}%")
 
 # hijack the dipole printer :)
 rt_output._print_dipole = _custom_dipole
@@ -89,12 +89,11 @@ fields = {
     "z_neg": [ 0, 0,-.002],
 }
 
-times = []
 for fn, amp in fields.items():
     _scf = mol.GHF().x2c()
     _scf.kernel()
 
-    rt_mf = rt_scf.RT_SCF(_scf, 0.8, end_time, filename=fn)
+    rt_mf = rt_scf.RT_SCF(_scf, dt, end_time, filename=fn)
     rt_mf.observables.update(energy=True, dipole=True)
     rt_mf.add_potential(cosfieldX2C(rt_mf, amp, frequency))
     rt_mf.kernel()

@@ -100,7 +100,7 @@ class RT_SCF:
                 self._log.note('Done')
             else:
                 self._log.note('Propagation Stopped Early')
-            if hasattr(self, 'fh'):
-                self.fh.close()
+            if hasattr(self, '_fh'):
+                self._fh.close()
 
         return self
