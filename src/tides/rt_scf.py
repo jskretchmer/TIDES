@@ -50,13 +50,15 @@ class RT_SCF:
 
         # Restart from chkfile, or create a chkfile
         # If restarting from chkfile, self.den_ao will be rewritten
-        self.chkfile = chkfile
         if chkfile is not None:
-            if os.path.exists(self.chkfile):
-                restart_from_chkfile(self)
-                self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
-            else:
-                self.current_time = 0
+            self.chkfile = chkfile
+        else:
+            print('Warning: chkfile not set, defaulting to tides.chk')
+            #self._log.note('Warning: chkfile not set, defaulting to tides.chk')
+            self.chkfile = 'tides.chk'
+        if os.path.exists(self.chkfile):
+            restart_from_chkfile(self)
+            self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
         else:
             self.current_time = 0
         self._t0 = self.current_time

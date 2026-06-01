@@ -34,6 +34,11 @@ def _print_mo_occ(rt_scf):
     mo_occ = rt_scf._mo_occ
     rt_scf._log.note(f'Molecular Orbital Occupations: {" ".join(map(str,mo_occ))} \n')
 
+def _print_mo_occ_separate(rt_scf):
+    mo_occ_separate = rt_scf._mo_occ_separate
+    rt_scf._log.note(f'Molecular Orbital Alpha Occupations: {" ".join(map(str,mo_occ_separate[0]))} \n')
+    rt_scf._log.note(f'Molecular Orbital Beta Occupations: {" ".join(map(str,mo_occ_separate[1]))} \n')
+
 def _print_charge(rt_scf):
     charge = rt_scf._charge
     rt_scf._log.note(f'Total Electronic Charge: {np.real(charge[0])} \n')
