@@ -15,7 +15,7 @@ hg = dft.GKS(mol).x2c()
 hg.xc = 'Slater, VWN5'
 hg.kernel()
 
-rt_hg = rt_scf.RT_SCF(hg, 0.25, 10000)
+rt_hg = rt_scf.RT_SCF(hg, 0.1, 10000)
 rt_hg.observables.update(charge=True, dipole=True)
 
 class EfieldWithX2C:

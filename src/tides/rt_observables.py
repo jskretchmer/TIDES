@@ -90,6 +90,10 @@ def _check_observables(rt_scf):
     if rt_scf.observables['mo_occ_separate']:
         assert rt_scf._scf.istype('UHF') | rt_scf._scf.istype('UKS')
 
+    # mo_occ_separate should be used for spin unrestricted when use wants to know specifically alpha vs. beta occupations
+    if rt_scf.observables['mo_occ_separate']:
+        assert rt_scf._scf.istype('UHF') | rt_scf._scf.istype('UKS')
+
     # If we are printing nuclei, we must be a RT_Ehrenfest object
     if rt_scf.observables['nuclei']:
         assert rt_scf.istype('RT_Ehrenfest')

@@ -25,7 +25,6 @@ class Nuc:
         return np.sum(0.5 * self.mass * self.vel**2, axis=1)
 
     def sample_vel(self, beta):
-        #np.random.seed(47)
         self.vel = np.random.normal(scale = 1. / np.sqrt(beta * self.mass))
 
     # Position full step
