@@ -1,8 +1,8 @@
 import numpy as np
 from pyscf import gto, dft
-from tides import RT_SCF
-from tides import MOCAP
-from tides import ElectricField
+from tides.rt_scf import RT_SCF
+from tides.rt_cap import MOCAP
+from tides.rt_vapp import ElectricField
 
 '''
 Original calculation: https://nwchemgit.github.io/RT-TDDFT.html#mo-cap-example

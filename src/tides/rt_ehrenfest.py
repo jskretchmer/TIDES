@@ -1,11 +1,11 @@
 import numpy as np
 from pyscf import gto, dft, scf, grad
-from tides.nuclear.grad_addons import complex_veff_
-from tides.nuclear import ehrenfest_force
-from tides.methods.rt_scf import RT_SCF
-from tides.nuclear.rt_nuclei import Nuc
-from tides.utils.rt_utils import _sym_orth, get_scf_orbitals
-from tides.utils.rt_utils import restart_from_chkfile
+from tides.grad_addons import complex_veff_
+from tides import ehrenfest_force
+from tides.rt_scf import RT_SCF
+from tides.rt_nuclei import Nuc
+from tides.rt_utils import _sym_orth, get_scf_orbitals
+from tides.rt_utils import restart_from_chkfile
 import os
 
 
@@ -82,7 +82,6 @@ class RT_Ehrenfest(RT_SCF):
         #self.ovlp = self._scf.mol.intor_symmetric('int1e_ovlp')
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
         self.orth = _sym_orth(self)
-        self.orth_inv = np.linalg.inv(self.orth)  # keep orth_inv consistent with moved-geometry orth
 
     def _update_grad(self):
         self._grad = self._scf.apply(self._grad_func)

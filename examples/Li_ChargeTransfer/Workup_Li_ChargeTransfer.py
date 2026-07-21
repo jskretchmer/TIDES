@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from tides.analysis.parse_rt import parse_output
+from tides.parse_rt import parse_output
 
 result = parse_output('Li_ChargeTransfer.out')
 
