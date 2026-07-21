@@ -1,7 +1,7 @@
 import numpy as np
 from pyscf import scf
-from tides.utils.basis_utils import _match_fragment_atom, _mask_fragment_basis, noscfbasis, _read_mol, _write_mol
-from tides.nuclear import ehrenfest_force
+from tides.basis_utils import _match_fragment_atom, _mask_fragment_basis, noscfbasis, _read_mol, _write_mol
+from tides import ehrenfest_force
 
 '''
 Real-time Utilities
@@ -19,42 +19,6 @@ def excite(rt_scf, excitation_alpha=None, excitation_beta=None):
             rt_scf.occ[1][excitation_beta-1] -= 1
 
     rt_scf.den_ao = rt_scf._scf.make_rdm1(mo_occ=rt_scf.occ)
-
-
-def single_excite(rt_scf, excitation_alpha_from=None, excitation_alpha_to=None, excitation_beta_from=None, excitation_beta_to=None):
-    # Excite an electron from the index specified, to the index specified
-    #if the _to is None, then the electron will be ionized.
-
-    if rt_scf.nmat == 1:
-        if rt_scf.occ[excitation_alpha-1] == 0:
-            raise Not(f'Cannot excite electron from index {excitation_alpha} as it is unoccupied.')
-        rt_scf.occ[excitation_alpha_from-1] -= 1  # remove
-
-        if excitation_alpha_to is not None:
-            if rt_scf.occ[excitation_alpha_to-1] == 2:
-                raise Not(f'Cannot excite electron to index {excitation_alpha_to} as it is already doubly occupied.')
-            rt_scf.occ[excitation_alpha_to-1] += 1  # add
-    # Unrestricted case (alpha/beta)
-    else:
-        if excitation_alpha_from is not None:
-            if rt_scf.occ[0][excitation_alpha_from-1] == 0:
-                raise NotImplementedError("Cannot remove electron: alpha orbital is already empty.")
-            rt_scf.occ[0][excitation_alpha_from-1] -= 1
-            if excitation_alpha_to is not None:
-                if rt_scf.occ[0][excitation_alpha_to-1] == 1:
-                    raise NotImplementedError("Cannot add electron: alpha orbital is already full.")
-                rt_scf.occ[0][excitation_alpha_to-1] += 1
-        if excitation_beta_from is not None:
-            if rt_scf.occ[1][excitation_beta_from-1] == 0:
-                raise NotImplementedError("Cannot remove electron: beta orbital is already empty.")
-            rt_scf.occ[1][excitation_beta_from-1] -= 1
-            if excitation_beta_to is not None:
-                if rt_scf.occ[1][excitation_beta_to-1] == 1:
-                    raise NotImplementedError("Cannot add electron: beta orbital is already full.")
-                rt_scf.occ[1][excitation_beta_to-1] += 1
-
-    rt_scf.den_ao = rt_scf._scf.make_rdm1(mo_occ=rt_scf.occ)
-
 
 def input_fragments(rt_scf, *fragments):
     # Specify the relevant atom indices for each fragment

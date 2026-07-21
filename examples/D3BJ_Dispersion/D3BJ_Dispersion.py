@@ -1,5 +1,5 @@
 from pyscf import gto, dft
-from tides import RT_SCF
+from tides import rt_scf
 
 """
 Adding Grimmes dispersion to TiDES calculations is no different than applying them to the PySCF calculation.
@@ -24,7 +24,7 @@ rks.disp = 'd3bj'
 rks.kernel()
 
 # Declare propagation parameters
-rt_scf = RT_SCF(rks, 
+rt_scf = rt_scf.RT_SCF(rks, 
 timestep=1.0, max_time=100)
     
 # Declare observables
