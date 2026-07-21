@@ -1,6 +1,6 @@
 import numpy as np
 from pyscf import gto, scf
-from tides import rt_scf
+from tides import RT_SCF
 
 
 '''
@@ -20,7 +20,7 @@ h2o = scf.RHF(h2o_mol)
 h2o.kernel()
 
 # Create RT_SCF object
-rt_h2o = rt_scf.RT_SCF(h2o, 0.2, 10, filename=None, prop='magnus_interpol', frequency=1, orth=None, chkfile=None, verbose=3)
+rt_h2o = RT_SCF(h2o, 0.2, 10, filename=None, prop='magnus_interpol', frequency=1, orth=None, chkfile=None, verbose=3)
 
 # Define custom field class. Make sure the calculate_potential method is written correctly and return matrix of correct shape (IN THE NON-ORTHOGONAL AO BASIS)
 class SinWaveEField:

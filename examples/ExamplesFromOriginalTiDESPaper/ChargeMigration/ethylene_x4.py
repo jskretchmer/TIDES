@@ -1,6 +1,7 @@
 import numpy as np
 from pyscf import gto, scf, dft
-from tides import rt_scf, rt_utils, basis_utils
+from tides import RT_SCF
+from tides.utils import rt_utils, basis_utils
 
 
 e1 = gto.M(
@@ -109,7 +110,7 @@ ethylene_x4.mo_coeff = noscf_orbitals
 np.savetxt('NOSCF_ORBITALS_ALPHA.txt', noscf_orbitals[0])
 np.savetxt('NOSCF_ORBITALS_BETA.txt', noscf_orbitals[1])
 
-rt_ethylene_x4 = rt_scf.RT_SCF(ethylene_x4, 0.5, 500)
+rt_ethylene_x4 = RT_SCF(ethylene_x4, 0.5, 500)
 rt_ethylene_x4.observables.update(energy=True, hirsh_charge=True, mulliken_atom_charge=True, mo_occ_separate=True)
 rt_utils.input_fragments(rt_ethylene_x4, e1, e2, e3, e4)
 

@@ -1,4 +1,5 @@
 import numpy as np
+import re
 
 def parse_output(filename):
     '''
@@ -28,9 +29,13 @@ def parse_output(filename):
     frag_charge = []
     alpha_energies = []
     beta_energies = []
+    plane_partition_charge = []
+    plane_partition_charge_spatial = []
     s2 = []
     _2s_1 = []
-
+    damping_diag_0 = []
+    damping_diag_1 = []
+    
     for idx, line in enumerate(lines):
         if 'Current Time' in line:
             time.append(get_time(line))
@@ -52,6 +57,10 @@ def parse_output(filename):
             mulliken_charge.append(get_charge(line))
         if 'Fragment' in line and 'Electronic Charge' in line:
             frag_charge.append(get_frag_charge(line))
+        if 'Plane Partition Charges' in line:
+            plane_partition_charge.append(get_plane_partition_charge(line))
+        if 'Plane Partition Charges (Spatial Integration)' in line:
+            plane_partition_charge_spatial.append(get_plane_partition_charge_spatial(line))
         if 'Atomic Electronic Charges' in line and 'Hirshfeld' not in line:
             mulliken_atom_charge.append(get_atom_charge(lines[idx+1:idx+mol_length+1]))
         if 'Hirshfeld Atomic Electronic Charges' in line:
@@ -68,6 +77,10 @@ def parse_output(filename):
             s2.append(get_spin_square(line))
         if '2S+1:' in line:
             _2s_1.append(get_spin_square(line))
+        if 'Damping Diagonal (FOCK basis, spin 0):' in line:
+            damping_diag_0.append(get_damping_diag(line))
+        if 'Damping Diagonal (FOCK basis, spin 1):' in line:
+            damping_diag_1.append(get_damping_diag(line))
 
     time = np.array(time)
     energy = np.array(energy)
@@ -87,6 +100,8 @@ def parse_output(filename):
     beta_energies = np.array(beta_energies)
     s2 = np.array(s2)
     _2s_1 = np.array(_2s_1)
+    damping_diag_0 = np.array(damping_diag_0)
+    damping_diag_1 = np.array(damping_diag_1)
     result = {
     'time': time,
     'energy': energy,
@@ -106,10 +121,14 @@ def parse_output(filename):
     'mo_occ_alpha': mo_occ_alpha,
     'mo_occ_beta': mo_occ_beta,
     'frag_charge': frag_charge,
+    'plane_partition_charge': np.array(plane_partition_charge),
+    'plane_partition_charge_spatial': np.array(plane_partition_charge_spatial),
     'alpha_energies': alpha_energies,
     'beta_energies': beta_energies,
     'spin_square': s2,
     '2S+1': _2s_1,
+    'damping_diag_0': damping_diag_0,
+    'damping_diag_1': damping_diag_1
     }
     return result
 
@@ -178,6 +197,33 @@ def get_length(coords, atoms):
         dx, dy, dz = dist_3d[0], dist_3d[1], dist_3d[2]
         lens.append(np.sqrt(dx ** 2 + dy ** 2 + dz ** 2))
     return lens
+
+def get_plane_partition_charge(line):
+    import re, ast
+    payload = line.split(':', 1)[1].strip()
+    matches = re.findall(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?(?=\s*[+\-]\s*\d*\.?\d+(?:[eE][-+]?\d+)?j)', payload)
+    return [float(m) for m in matches]
+
+def get_plane_partition_charge_spatial(line):
+    payload = line.split(':', 1)[1].strip()
+    matches = re.findall(r'[-+]?\d*\.\d+', payload)
+    return [float(m) for m in matches]
+
+def get_damping_diag(line):
+    # Extract the content within the brackets
+    context = line.split('[', 1)[1].rsplit(']', 1)[0]
+    # Split into individual number strings
+    complex_strs = context.strip().split()
+    real_parts = []
+    for s in complex_strs:
+        try:
+            # Use Python's robust complex() constructor to parse the string
+            # and then take the .real part. This handles all formats correctly.
+            real_parts.append(complex(s).real)
+        except ValueError:
+            # Ignore any malformed strings that can't be converted
+            pass
+    return np.array(real_parts)
 
 def get_spin_square(line):
     return float(line.split()[1])

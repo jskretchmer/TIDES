@@ -1,6 +1,6 @@
 from pyscf import gto, scf
 import numpy as np
-from tides import rt_ehrenfest
+from tides import RT_Ehrenfest
 
 # Build mol
 mol = gto.M(atom='''
@@ -15,7 +15,7 @@ uhf = scf.UHF(mol)
 uhf.kernel()
 
 # Declare propagation parameters
-rt_ehrenfest = rt_ehrenfest.RT_Ehrenfest(uhf, 0.05, 500, 
+rt_ehrenfest = RT_Ehrenfest(uhf, 0.05, 500, 
         Ne_step=1, N_step=1)
 
 # Declare observables

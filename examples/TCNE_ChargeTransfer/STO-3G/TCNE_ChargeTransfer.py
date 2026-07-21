@@ -1,6 +1,7 @@
 from pyscf import gto, dft, scf
 import numpy as np
-from tides import rt_scf, rt_utils, basis_utils
+from tides import RT_SCF
+from tides.utils import rt_utils, basis_utils
 
 
 '''
@@ -97,7 +98,7 @@ bottom.kernel()
 
 # Now overwrite the dimer orbitals with the SCF orbitals of the bottom/top monomers
 dimer.mo_coeff = basis_utils.noscfbasis(dimer,bottom,top)
-rt_scf = rt_scf.RT_SCF(dimer, 0.2, 500)
+rt_scf = RT_SCF(dimer, 0.2, 500)
 rt_scf.observables.update(charge=True)
 
 # We'll use the input_fragments function here so that the Mulliken charges on the monomers are calculated

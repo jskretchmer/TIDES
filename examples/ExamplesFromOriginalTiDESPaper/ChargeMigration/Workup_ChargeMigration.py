@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, MaxNLocator
 import matplotlib.patches as mpatches
-from tides.parse_rt import parse_output
+from tides.analysis.parse_rt import parse_output
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42
 mpl.rcParams['font.family'] = 'sans-serif'

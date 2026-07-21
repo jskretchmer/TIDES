@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tides.parse_rt import parse_output
+from tides.analysis.parse_rt import parse_output
 
 result_p1 = parse_output('Part1.out')
 result_p2 = parse_output('Part2.out')

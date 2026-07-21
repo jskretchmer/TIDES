@@ -1,6 +1,6 @@
 from pyscf import gto, scf, dft
-from tides import rt_scf, rt_vapp
-from tides.staticfield import static_bfield
+from tides import RT_SCF
+from tides import static_bfield
 
 '''
 Hydrogen Atom in a static B-Field
@@ -25,7 +25,7 @@ mf.kernel()
 static_bfield(mf, [0,0,mag_z])
 
 # Create RT_SCF object
-rt_mf = rt_scf.RT_SCF(mf, 0.1, 102500)
+rt_mf = RT_SCF(mf, 0.1, 102500)
 
 # Specify propagator
 rt_mf.prop = 'magnus_step' 

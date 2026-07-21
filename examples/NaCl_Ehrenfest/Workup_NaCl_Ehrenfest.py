@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from MDAnalysis.coordinates.XYZ import XYZReader
-from tides.parse_rt import parse_output, get_length
+from tides.analysis.parse_rt import parse_output, get_length
 
 result = parse_output('NaCl_Ehrenfest.out')
 

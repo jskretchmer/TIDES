@@ -1,6 +1,6 @@
 from pyscf import gto, scf
 import numpy as np
-from tides import rt_ehrenfest
+from tides import RT_Ehrenfest
 
 # Build mol
 mol = gto.M(atom='''
@@ -25,7 +25,7 @@ uks.xc = 'B3LYP'
 uks.kernel()
 
 # Declare propagation parameters
-rt_ehrenfest = rt_ehrenfest.RT_Ehrenfest(uks, 0.04, 4200, Ne_step=1, N_step=1,
+rt_ehrenfest = RT_Ehrenfest(uks, 0.04, 4200, Ne_step=1, N_step=1,
                                          filename='H2_Ehrenfest.out', frequency=20,
                                          chkfile='H2_Ehrenfest.chk', verbose=5)
 

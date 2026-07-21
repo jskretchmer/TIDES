@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from MDAnalysis.coordinates.XYZ import XYZReader
-from tides.parse_rt import parse_output, get_length
-from tides.rt_spec import abs_spec
+from tides.analysis.parse_rt import parse_output, get_length
+from tides.analysis.rt_spec import abs_spec
 
 
 result = parse_output('H2_Ehrenfest.out')

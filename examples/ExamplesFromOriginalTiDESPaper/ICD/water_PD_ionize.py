@@ -1,7 +1,7 @@
 from pyscf import gto, dft, scf
 import numpy as np
-from tides import rt_scf, rt_utils, basis_utils
-from tides.rt_cap import MOCAP
+from tides import RT_SCF, MOCAP
+from tides.utils import rt_utils, basis_utils
 
 dimer = gto.Mole()
 pd = gto.Mole()
@@ -173,7 +173,7 @@ noscf_orbitals = basis_utils.noscfbasis(dimer, pd, pa)
 
 basis_utils.print2molden(dimer, filename='SCForbitals')
 basis_utils.print2molden(dimer, filename='NOSCForbitals', mo_coeff=noscf_orbitals)
-rt_water = rt_scf.RT_SCF(dimer,1,2000)
+rt_water = RT_SCF(dimer,1,2000)
 
 # Declare which observables to be calculated/printed
 rt_water.observables.update(mo_occ=True, charge=True, energy=True, hirsh_charge=True)

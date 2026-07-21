@@ -1,7 +1,7 @@
 from pyscf import gto, scf, dft
-from tides import rt_scf
-from tides import rt_utils
-from tides import basis_utils
+from tides import RT_SCF
+from tides.utils import rt_utils
+from tides.utils import basis_utils
 
 dimer = gto.Mole()
 Li1 = gto.Mole()
@@ -45,7 +45,7 @@ Li1.kernel()
 Li2.kernel()
 
 dimer.mo_coeff = basis_utils.noscfbasis(dimer,Li1,Li2)
-rt_mf = rt_scf.RT_SCF(dimer, 0.5, 100, chkfile='Restart.chkfile')
+rt_mf = RT_SCF(dimer, 0.5, 100, chkfile='Restart.chkfile')
 rt_mf.observables.update(mulliken_atom_charge=True, hirsh_atom_charge=True)
 
 rt_mf.kernel()

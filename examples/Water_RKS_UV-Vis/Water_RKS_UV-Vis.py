@@ -1,7 +1,7 @@
 import numpy as np
 from pyscf import gto, scf, dft
-from tides import rt_scf
-from tides.rt_vapp import ElectricField
+from tides import RT_SCF
+from tides import ElectricField
 
 '''
 Original calculation: https://nwchemgit.github.io/RT-TDDFT.html#absorption-spectrum-of-water
@@ -23,7 +23,7 @@ rks.xc = 'PBE0'
 rks.kernel()
 
 # Create RT_SCF
-rt_scf = rt_scf.RT_SCF(rks, 0.2, 200)
+rt_scf = RT_SCF(rks, 0.2, 200)
 rt_scf.observables.update(dipole=True)
 
 # Define field

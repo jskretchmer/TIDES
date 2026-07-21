@@ -1,6 +1,6 @@
 from pyscf import gto, scf
-from tides import rt_scf
-from tides.rt_vapp import ElectricField
+from tides import RT_SCF
+from tides import ElectricField
 
 # Build mol
 mol = gto.M(atom='''
@@ -16,7 +16,7 @@ rhf = scf.RHF(mol)
 rhf.kernel()
 
 # Declare propagation parameters
-rt_scf = rt_scf.RT_SCF(rhf, 
+rt_scf = RT_SCF(rhf, 
 timestep=1.0, max_time=1000)
     
 # Declare observables

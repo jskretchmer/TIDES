@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-from tides.parse_rt import parse_output
-from tides.rt_spec import abs_spec
+from tides.analysis.parse_rt import parse_output
+from tides.analysis.rt_spec import abs_spec
 
 result = parse_output('Water_RKS_UV-Vis.out')
 w, osc_str = abs_spec(result['time'], result['dipole'], 0.0001, pad=50000, damp=50)

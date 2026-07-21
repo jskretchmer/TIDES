@@ -1,8 +1,8 @@
 import numpy as np
 from pyscf import gto, scf, dft
-from tides.rt_scf import RT_SCF
+from tides import RT_SCF
 from pyscf.scf.stability import ghf_stability ##
-from tides.staticfield import static_bfield
+from tides import static_bfield
 
 mag_y = 0.000085 # in au
 

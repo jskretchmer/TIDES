@@ -1,6 +1,6 @@
 from pyscf import gto, scf
 import numpy as np
-from tides import rt_ehrenfest
+from tides import RT_Ehrenfest
 
 # Build mol
 mol = gto.M(atom='''
@@ -24,7 +24,7 @@ gdm_guess = np.array([[0.18568439, 0.28537676, 0.00000000, 0.00000000, 0.0000000
 gks.kernel(dm0 = gdm_guess)
 
 # Declare propagation parameters
-rt_ehrenfest = rt_ehrenfest.RT_Ehrenfest(gks, 0.04, 4200, Ne_step=1, N_step=1,
+rt_ehrenfest = RT_Ehrenfest(gks, 0.04, 4200, Ne_step=1, N_step=1,
                                          filename='H2_Ehrenfest.out', frequency=20,
                                          chkfile='H2_Ehrenfest.chk', verbose=5)
 

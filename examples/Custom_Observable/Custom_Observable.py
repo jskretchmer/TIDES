@@ -1,5 +1,5 @@
 from pyscf import gto, scf
-from tides import rt_scf
+from tides import RT_SCF
 
 '''
 This example walks through how to implement a custom observable. 
@@ -20,16 +20,17 @@ h2o = scf.RHF(h2o_mol)
 h2o.kernel()
 
 # Create RT_SCF object
-rt_h2o = rt_scf.RT_SCF(h2o, 0.2, 10, filename=None, prop='magnus_interpol', frequency=1, orth=None, chkfile=None, verbose=3)
+rt_h2o = RT_SCF(h2o, 0.2, 10, filename=None, prop='magnus_interpol', frequency=1, orth=None, chkfile=None, verbose=3)
 
 # Redefine dipole observable
-def get_redefined_dipole(rt_scf, den_ao):
+def get_redefined_dipole(rt_obj):
+    # The rt object (RT_SCF or CAS) is the only argument; read the density off it.
     # PySCF's SCF objects have a dip_moment() method that returns the dipole moment.
-    rt_scf._redefined_dipole = rt_scf._scf.dip_moment(mol=rt_scf._scf.mol, dm=rt_scf.den_ao, unit='A.U.', verbose=1)
+    rt_obj._redefined_dipole = rt_obj._scf.dip_moment(mol=rt_obj._scf.mol, dm=rt_obj.den_ao, unit='A.U.', verbose=1)
 
-def print_redefined_dipole(rt_scf):
+def print_redefined_dipole(rt_obj):
     # Format output however you want
-    rt_scf._log.note(f'HERE IS THE CUSTOM DIPOLE OBSERVABLE (AU): {" ".join(map(str,rt_scf._redefined_dipole))}')
+    rt_obj._log.note(f'HERE IS THE CUSTOM DIPOLE OBSERVABLE (AU): {" ".join(map(str,rt_obj._redefined_dipole))}')
 
 
 # Add these functions to rt_h2o._observables_functions dictionary and declare the custom observable in rt_h2o.observables dictionary.

@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from tides.parse_rt import parse_output
+from tides.analysis.parse_rt import parse_output
 
 result_without_mocap = parse_output('Water_Without_MOCAP.out')
 result_mocap = parse_output('Water_MOCAP.out')

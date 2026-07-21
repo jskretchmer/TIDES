@@ -1,6 +1,6 @@
 import numpy as np
 from pyscf import gto, dft
-from tides import rt_ehrenfest
+from tides import RT_Ehrenfest
 
 # Build Cl2 molecule
 mol = gto.M(
@@ -17,7 +17,7 @@ cl2.xc = 'B3LYP'
 cl2.kernel()
 
 # Create RT_Ehrenfest object
-rt_cl2 = rt_ehrenfest.RT_Ehrenfest(cl2, 0.5, 5000, 
+rt_cl2 = RT_Ehrenfest(cl2, 0.5, 5000, 
         frequency=8, Ne_step=4, N_step=2)
 
 # Set initial velocity

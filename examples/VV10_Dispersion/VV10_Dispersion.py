@@ -1,5 +1,5 @@
 from pyscf import gto, dft
-from tides import rt_scf
+from tides import RT_SCF
 
 """
 See 15-nlc_functionals.py in PySCF's examples/dft folder for more details on how to use non-local correlation functionals.
@@ -21,7 +21,7 @@ rks.xc = 'wb97m_v'
 rks.kernel()
 
 # Declare propagation parameters
-rt_scf = rt_scf.RT_SCF(rks, 
+rt_scf = RT_SCF(rks, 
 timestep=1.0, max_time=100)
     
 # Declare observables

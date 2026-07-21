@@ -1,6 +1,6 @@
 import numpy as np
 from pyscf import gto, scf, dft, lib
-from tides import rt_scf
+from tides import RT_SCF
 import scipy
 from sapporo import sapporo
 
@@ -15,7 +15,7 @@ zn = dft.GKS(mol).x2c()
 zn.xc = 'Slater, VWN5'
 zn.kernel()
 
-rt_zn = rt_scf.RT_SCF(zn, 0.1, 10000)
+rt_zn = RT_SCF(zn, 0.1, 10000)
 rt_zn.observables.update(charge=True, dipole=True)
 
 class EfieldWithX2C:

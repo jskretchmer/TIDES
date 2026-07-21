@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, MaxNLocator
 import matplotlib.patches as mpatches
-from tides.rt_spec import abs_spec
-from tides.parse_rt import parse_output, get_length
+from tides.analysis.rt_spec import abs_spec
+from tides.analysis.parse_rt import parse_output, get_length
 from pyscf import lib
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42

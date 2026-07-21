@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tides.parse_rt import parse_output
+from tides.analysis.parse_rt import parse_output
 
 result = parse_output('Water_ResonantExcitation.out')
 

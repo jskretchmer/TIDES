@@ -45,11 +45,15 @@ def _cast_den_ao(scf, den_ao, grids):
 def get_weights(mol):
     grids = dft.Grids(mol)
     grids.build()
-    scf = dft.RKS(mol)
-    scf.verbose = 0
-    scf.xc = 'HF'
-    scf.grids = grids
-    scf.kernel()
 
-    H = HirshfeldAnalysis(scf).run()
+    if getattr(mol, 'spin', 0) != 0:
+        scf_obj = dft.UKS(mol)
+    else:
+        scf_obj = dft.RKS(mol)
+    scf_obj.verbose = 0
+    scf_obj.xc = 'HF'
+    scf_obj.grids = grids
+    scf_obj.kernel()
+
+    H = HirshfeldAnalysis(scf_obj).run()
     return grids, H.result['weights_free']

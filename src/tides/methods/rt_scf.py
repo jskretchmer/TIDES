@@ -3,10 +3,10 @@ from scipy.linalg import inv
 from pyscf import gto
 from pyscf.scf import addons
 from pyscf.lib import logger
-from tides.rt_prop import propagate
-from tides import rt_observables
-from tides import rt_output
-from tides.rt_utils import restart_from_chkfile
+from tides.propagators.rt_prop import propagate
+from tides.observables import rt_observables
+from tides.observables import rt_output
+from tides.utils.rt_utils import restart_from_chkfile
 import os
 
 
@@ -23,7 +23,7 @@ class RT_SCF:
         self._scf = scf
         self.ovlp = self._scf.get_ovlp()
         self.occ = self._scf.get_occ()
-        
+
         self.verbose = verbose
         self._potential = []
         self.fragments = []
@@ -34,6 +34,7 @@ class RT_SCF:
         self.prop = prop
 
         self.orth = orth
+        self.orth_inv = inv(self.orth)  # cached inverse for rotate_coeff_to_orth
 
         if filename is None:
             self._log = logger.Logger(verbose=self.verbose)
@@ -80,7 +81,10 @@ class RT_SCF:
         return np.matmul(self.orth.conj().T, np.matmul(self.fock_ao, self.orth))
 
     def rotate_coeff_to_orth(self, coeff_ao):
-        return np.matmul(inv(self.orth), coeff_ao)
+        return np.matmul(self.orth_inv, coeff_ao)
+
+    def rotate_fock_to_orth(self, fock_ao):
+        return np.matmul(self.orth.T, np.matmul(fock_ao, self.orth))
 
     def rotate_coeff_to_ao(self, coeff_orth):
         return np.matmul(self.orth, coeff_orth)
@@ -107,8 +111,6 @@ class RT_SCF:
             if hasattr(self, 'fh'):
                 self.fh.close()
             if hasattr(self, '_xyz_fh'):
-                # This is only important for unfrozen nuclei, printing .xyz files
-                # Putting this here anyways for RT_Ehrenfest and other future derived classes
                 self._xyz_fh.close()
 
         return self

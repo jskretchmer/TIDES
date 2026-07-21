@@ -1,6 +1,6 @@
 import numpy as np
 from pyscf import gto, scf, dft
-from tides import rt_scf
+from tides import RT_SCF
 
 '''
 An example of defining a custom field. And how to set up an x2c() calculation.
@@ -50,7 +50,7 @@ class x2cDeltaField:
         energy = self.calculate_field_energy(rt_scf)
         return -1 * np.einsum('xij,x->ij', self.tdip, energy)
 
-rt_mf = rt_scf.RT_SCF(mf, 0.5, 2000)
+rt_mf = RT_SCF(mf, 0.5, 2000)
 rt_mf.observables.update(energy=True, dipole=True)
 
 delta_field = x2cDeltaField(rt_mf, [0.0001, 0.0001, 0.0001])

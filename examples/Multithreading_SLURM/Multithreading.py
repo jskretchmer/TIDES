@@ -1,7 +1,7 @@
 import os
 from pyscf import gto, scf, lib
-from tides import rt_scf
-from tides.rt_vapp import ElectricField
+from tides import RT_SCF
+from tides import ElectricField
 
 n_threads = os.environ.get('SLURM_CPUS_PER_TASK', '2')
 os.environ['MKL_NUM_THREADS'] = n_threads
@@ -25,7 +25,7 @@ rhf = scf.RHF(mol)
 rhf.kernel()
 
 # Declare propagation parameters
-rt_scf = rt_scf.RT_SCF(rhf,
+rt_scf = RT_SCF(rhf,
 timestep=1.0, max_time=1000)
 
 # Declare observables

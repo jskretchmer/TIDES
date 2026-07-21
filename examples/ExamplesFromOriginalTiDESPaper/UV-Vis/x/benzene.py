@@ -1,6 +1,6 @@
 from pyscf import gto, dft
-from tides.rt_scf import RT_SCF
-from tides.rt_vapp import ElectricField
+from tides import RT_SCF
+from tides import ElectricField
 
 # Build benzene molecule
 mol = gto.M(

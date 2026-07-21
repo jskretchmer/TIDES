@@ -55,6 +55,7 @@ def _mask_fragment_basis(scf, match_indices):
 def noscfbasis(scf, *fragments, reorder=True, orth=None):
     total_dim = np.shape(scf.mo_coeff)
     noscf_orbitals = np.zeros(total_dim)
+
     
     for frag in fragments:
         match_indices = _match_fragment_atom(scf, frag)
@@ -71,8 +72,8 @@ def noscfbasis(scf, *fragments, reorder=True, orth=None):
         orth = addons.canonical_orth_(scf.get_ovlp())
     noscf_orth = np.matmul(inv(orth), noscf_orbitals).astype(np.complex128)
     noscf_orth, _ = np.linalg.qr(noscf_orth, 'complete')
-    return np.matmul(orth, noscf_orth)
-
+    noscf_orth = np.matmul(orth, noscf_orth)
+    return noscf_orth
 
 def _reorder_noscf(noscf_orbitals, scf, *fragments):
     if len(np.shape(scf.mo_coeff)) == 3:
