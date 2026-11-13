@@ -8,8 +8,7 @@
 # REMOVING CALLS TO pyscf.ao2mo.restore
 
 import numpy
-import pyscf.lib
-import pyscf.ao2mo
+import numba
 import pyscf.fci
 from pyscf.fci import cistring
 
@@ -18,8 +17,135 @@ import time
 #####################################################################
 
 
+@numba.njit(cache=True)
+def _scatter_alpha(link_indexa, fcivec, t1):
+    na, ntab = link_indexa.shape[0], link_indexa.shape[1]
+    nb = fcivec.shape[1]
+    for str0 in range(na):
+        for e in range(ntab):
+            a = link_indexa[str0, e, 0]
+            i = link_indexa[str0, e, 1]
+            str1 = link_indexa[str0, e, 2]
+            sign = link_indexa[str0, e, 3]
+            for k in range(nb):
+                t1[a, i, str1, k] += sign * fcivec[str0, k]
+
+
+@numba.njit(cache=True)
+def _scatter_beta(link_indexb, fcivec, t1):
+    nb, ntab = link_indexb.shape[0], link_indexb.shape[1]
+    na = fcivec.shape[0]
+    for str0 in range(nb):
+        for e in range(ntab):
+            a = link_indexb[str0, e, 0]
+            i = link_indexb[str0, e, 1]
+            str1 = link_indexb[str0, e, 2]
+            sign = link_indexb[str0, e, 3]
+            for k in range(na):
+                t1[a, i, k, str1] += sign * fcivec[k, str0]
+
+
+@numba.njit(cache=True)
+def _gather_alpha(link_indexa, t1, ci1):
+    na, ntab = link_indexa.shape[0], link_indexa.shape[1]
+    nb = ci1.shape[1]
+    for str0 in range(na):
+        for e in range(ntab):
+            a = link_indexa[str0, e, 0]
+            i = link_indexa[str0, e, 1]
+            str1 = link_indexa[str0, e, 2]
+            sign = link_indexa[str0, e, 3]
+            for k in range(nb):
+                ci1[str0, k] += sign * t1[i, a, str1, k]
+
+
+@numba.njit(cache=True)
+def _gather_beta(link_indexb, t1, ci1):
+    nb, ntab = link_indexb.shape[0], link_indexb.shape[1]
+    na = ci1.shape[0]
+    for str0 in range(nb):
+        for e in range(ntab):
+            a = link_indexb[str0, e, 0]
+            i = link_indexb[str0, e, 1]
+            str1 = link_indexb[str0, e, 2]
+            sign = link_indexb[str0, e, 3]
+            for k in range(na):
+                ci1[k, str0] += sign * t1[i, a, k, str1]
+
+
+@numba.njit(cache=True)
+def _scatter_alpha_ras(link_indexa, fcivec, alpha_level, allowed_beta_flat, allowed_beta_offset, t1):
+    na, ntab = link_indexa.shape[0], link_indexa.shape[1]
+    for str0 in range(na):
+        for e in range(ntab):
+            a = link_indexa[str0, e, 0]
+            i = link_indexa[str0, e, 1]
+            str1 = link_indexa[str0, e, 2]
+            sign = link_indexa[str0, e, 3]
+            LA = alpha_level[str1]
+            lo = allowed_beta_offset[LA]
+            hi = allowed_beta_offset[LA + 1]
+            for idx in range(lo, hi):
+                k = allowed_beta_flat[idx]
+                t1[a, i, str1, k] += sign * fcivec[str0, k]
+
+
+@numba.njit(cache=True)
+def _scatter_beta_ras(link_indexb, fcivec, beta_level, allowed_alpha_flat, allowed_alpha_offset, t1):
+    nb, ntab = link_indexb.shape[0], link_indexb.shape[1]
+    for str0 in range(nb):
+        for e in range(ntab):
+            a = link_indexb[str0, e, 0]
+            i = link_indexb[str0, e, 1]
+            str1 = link_indexb[str0, e, 2]
+            sign = link_indexb[str0, e, 3]
+            LB = beta_level[str1]
+            lo = allowed_alpha_offset[LB]
+            hi = allowed_alpha_offset[LB + 1]
+            for idx in range(lo, hi):
+                k = allowed_alpha_flat[idx]
+                t1[a, i, k, str1] += sign * fcivec[k, str0]
+
+
+@numba.njit(cache=True)
+def _gather_alpha_ras(link_indexa, t1, alpha_level, allowed_beta_flat, allowed_beta_offset, ci1):
+    na, ntab = link_indexa.shape[0], link_indexa.shape[1]
+    for str0 in range(na):
+        LA = alpha_level[str0]
+        lo = allowed_beta_offset[LA]
+        hi = allowed_beta_offset[LA + 1]
+        for e in range(ntab):
+            a = link_indexa[str0, e, 0]
+            i = link_indexa[str0, e, 1]
+            str1 = link_indexa[str0, e, 2]
+            sign = link_indexa[str0, e, 3]
+            for idx in range(lo, hi):
+                k = allowed_beta_flat[idx]
+                ci1[str0, k] += sign * t1[i, a, str1, k]
+
+
+@numba.njit(cache=True)
+def _gather_beta_ras(link_indexb, t1, beta_level, allowed_alpha_flat, allowed_alpha_offset, ci1):
+    nb, ntab = link_indexb.shape[0], link_indexb.shape[1]
+    for str0 in range(nb):
+        LB = beta_level[str0]
+        lo = allowed_alpha_offset[LB]
+        hi = allowed_alpha_offset[LB + 1]
+        for e in range(ntab):
+            a = link_indexb[str0, e, 0]
+            i = link_indexb[str0, e, 1]
+            str1 = link_indexb[str0, e, 2]
+            sign = link_indexb[str0, e, 3]
+            for idx in range(lo, hi):
+                k = allowed_alpha_flat[idx]
+                ci1[k, str0] += sign * t1[i, a, k, str1]
+
+
+#####################################################################
+
+
 def apply_ham_pyscf_check(
-    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, gen=False, fctr=0.5
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, gen=False, fctr=0.5, link_index=None
 ):
     """
     subroutine that checks if the hamiltonian is real or complex
@@ -31,10 +157,10 @@ def apply_ham_pyscf_check(
         if numpy.iscomplexobj(hmat) and numpy.iscomplexobj(Vmat):
             # Complex restricted hamiltonian
             CIcoeffs = apply_ham_pyscf_complex(
-                CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr
+                CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr, link_index=link_index
             )
 
-        if not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat):
+        elif not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat):
             # Real restricted hamiltonian
             CIcoeffs = apply_ham_pyscf_real(
                 CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr
@@ -235,7 +361,7 @@ def apply_ham_pyscf_nosym(CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fc
 
 
 def apply_ham_pyscf_complex(
-    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5, link_index=None
 ):
     """
     NOTE: THIS SUBROUTINE ALLOWS FOR COMPLEX HAMILTONIAN,
@@ -252,7 +378,7 @@ def apply_ham_pyscf_complex(
     fctr is the factor in front of the 2e- terms when defining the hamiltonian
     """
     Vmat = absorb_h1e_complex(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
-    temp = contract_2e_complex(Vmat, CIcoeffs, norbs, (nalpha, nbeta))
+    temp = contract_2e_complex(Vmat, CIcoeffs, norbs, (nalpha, nbeta), link_index=link_index)
     CIcoeffs = temp + Econst * CIcoeffs
 
     return CIcoeffs
@@ -262,7 +388,7 @@ def apply_ham_pyscf_complex(
 
 
 def apply_ham_pyscf_complex_ras(
-    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst,goodInd, fctr=0.5
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, ras_blocks, fctr=0.5, link_index=None
 ):
     """
     NOTE: THIS SUBROUTINE ALLOWS FOR COMPLEX HAMILTONIAN,
@@ -276,10 +402,12 @@ def apply_ham_pyscf_complex_ras(
     0/1 implies that an orbital is empty/occupied
     the 2e- integrals, Vmat, are given in chemistry notation
     Econst is a constant energy contribution to the hamiltonian
+    ras_blocks is the (alpha_level, beta_level, allowed_beta_flat, allowed_beta_offset,
+    allowed_alpha_flat, allowed_alpha_offset) tuple from rt_cas_ras's RAS setup
     fctr is the factor in front of the 2e- terms when defining the hamiltonian
     """
     Vmat = absorb_h1e_complex(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
-    temp = contract_2e_complex_ras(Vmat, CIcoeffs, norbs, (nalpha, nbeta),goodInd)
+    temp = contract_2e_complex_ras(Vmat, CIcoeffs, norbs, (nalpha, nbeta), ras_blocks, link_index=link_index)
     CIcoeffs = temp + Econst * CIcoeffs
 
     return CIcoeffs
@@ -288,7 +416,48 @@ def apply_ham_pyscf_complex_ras(
 #####################################################################
 
 
-def contract_2e_complex_ras(g2e, fcivec, norb, nelec,gi,link_index=None):
+def apply_ham_pyscf_complex_multi(
+    CIcoeffs_list, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5, link_index=None
+):
+    """
+    Applies the same complex Hamiltonian (hmat, Vmat) to several CI vectors
+    that share it (e.g. the real and imaginary parts of a CI vector within
+    one RK stage), absorbing the 1e Hamiltonian into the 2e integrals only
+    once instead of once per CI vector.
+    Returns a list of results in the same order as CIcoeffs_list.
+    """
+    Vmat_absorbed = absorb_h1e_complex(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
+    return [
+        contract_2e_complex(Vmat_absorbed, CIcoeffs, norbs, (nalpha, nbeta), link_index=link_index)
+        + Econst * CIcoeffs
+        for CIcoeffs in CIcoeffs_list
+    ]
+
+
+#####################################################################
+
+
+def apply_ham_pyscf_complex_ras_multi(
+    CIcoeffs_list, hmat, Vmat, nalpha, nbeta, norbs, Econst, ras_blocks, fctr=0.5, link_index=None
+):
+    """
+    RAS-masked counterpart to apply_ham_pyscf_complex_multi: applies the same
+    complex Hamiltonian (hmat, Vmat) to several CI vectors that share it,
+    absorbing the 1e Hamiltonian into the 2e integrals only once.
+    Returns a list of results in the same order as CIcoeffs_list.
+    """
+    Vmat_absorbed = absorb_h1e_complex(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
+    return [
+        contract_2e_complex_ras(Vmat_absorbed, CIcoeffs, norbs, (nalpha, nbeta), ras_blocks, link_index=link_index)
+        + Econst * CIcoeffs
+        for CIcoeffs in CIcoeffs_list
+    ]
+
+
+#####################################################################
+
+
+def contract_2e_complex_ras(g2e, fcivec, norb, nelec, ras_blocks, link_index=None):
     """
     version of the pyscf subroutine contract_2e
     which allows for complex orbitals
@@ -297,6 +466,13 @@ def contract_2e_complex_ras(g2e, fcivec, norb, nelec,gi,link_index=None):
     other changes from pyscf have been noted
     subroutine follows logic of
     eqs 11.8.13-11.8.15 in helgaker, jorgensen and olsen
+
+    ras_blocks is (alpha_level, beta_level, allowed_beta_flat, allowed_beta_offset,
+    allowed_alpha_flat, allowed_alpha_offset), precomputed once in rt_cas_ras from
+    the RAS excitation-level restriction. Since the restriction depends only on
+    row_sums[i]+col_sums[j], every (levelA, levelB) block of the na x nb grid is
+    either fully allowed or fully disallowed, so disallowed blocks are skipped
+    entirely instead of being computed and then multiplied by a zero mask.
     """
 
     neleca, nelecb = nelec
@@ -306,71 +482,27 @@ def contract_2e_complex_ras(g2e, fcivec, norb, nelec,gi,link_index=None):
     else:
         link_indexa, link_indexb = link_index
 
-    #print('link_indexa')
-    #print(link_indexa)
-    #print('link_indexb')
-    #print(link_indexb)
+    (alpha_level, beta_level, allowed_beta_flat, allowed_beta_offset,
+     allowed_alpha_flat, allowed_alpha_offset) = ras_blocks
 
     na = link_indexa.shape[0]
     nb = link_indexb.shape[0]
-    #print('fcivec')
-    #print(fcivec)
     fcivec = fcivec.reshape(na, nb)
-    #print('fcivec')
-    #print(fcivec)
-
-    #print('na,nb')
-    #print(na)
-    #print(nb)
 
     t1 = numpy.zeros((norb, norb, na, nb))
-    #print('enum1')
-    #print(enumerate(link_indexa))
-    #print('enum2')
-    #print(enumerate(link_indexb))
-    for str0, tab in enumerate(link_indexa):
-        #print(tab)
-        for a, i, str1, sign in tab:
-            for strOpp in range(len(fcivec[str0])):
-                if gi[str1,strOpp] == 1:
-                    t1[a, i, str1, strOpp] += sign * fcivec[str0,strOpp]
-    for k in range(na):
-        for str0, tab in enumerate(link_indexb):
-            for a, i, str1, sign in tab:
-                if gi[k,str1] == 1:
-                    #print(str1)
-                    t1[a, i, k, str1] += sign * fcivec[k, str0]
+    _scatter_alpha_ras(link_indexa, fcivec, alpha_level, allowed_beta_flat, allowed_beta_offset, t1)
+    _scatter_beta_ras(link_indexb, fcivec, beta_level, allowed_alpha_flat, allowed_alpha_offset, t1)
 
     # following line assumes the symmetry
     # that g[p,q,r,s]=g[r,s,p,q] in chemists notation
     # this symmetry holds for real and complex orbitals
     t1 = numpy.dot(g2e.reshape(norb * norb, -1), t1.reshape(norb * norb, -1))
     t1 = t1.reshape(norb, norb, na, nb)
-    '''
-    print('t1')
-    for i in range(norb):
-        for j in range(norb):
-            print(t1[i][j])
-    sys.exit()
-    '''
 
     # data type of ci1 is now complex
     ci1 = numpy.zeros_like(fcivec, dtype=complex)
-    for str0, tab in enumerate(link_indexa):
-        for a, i, str1, sign in tab:
-            for strOpp in range(len(ci1[str0])):
-                if gi[str0,strOpp] == 1:
-                    ci1[str0,strOpp] += sign * t1[i,a,str1,strOpp]
-            #print(sign * t1[i, a, str1])
-    for k in range(na):
-        for str0, tab in enumerate(link_indexb):
-            for a, i, str1, sign in tab:
-                #print(str0)
-                #print(str1)
-                # indices a and i have been switched from pyscf
-                if gi[k,str0] == 1:
-                    ci1[k, str0] += sign * t1[i, a, k, str1]
-    #sys.exit()
+    _gather_alpha_ras(link_indexa, t1, alpha_level, allowed_beta_flat, allowed_beta_offset, ci1)
+    _gather_beta_ras(link_indexb, t1, beta_level, allowed_alpha_flat, allowed_alpha_offset, ci1)
     return ci1
 
 
@@ -400,13 +532,8 @@ def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
     fcivec = fcivec.reshape(na, nb)
 
     t1 = numpy.zeros((norb, norb, na, nb))
-    for str0, tab in enumerate(link_indexa):
-        for a, i, str1, sign in tab:
-            t1[a, i, str1] += sign * fcivec[str0]
-    for k in range(na):
-        for str0, tab in enumerate(link_indexb):
-            for a, i, str1, sign in tab:
-                t1[a, i, k, str1] += sign * fcivec[k, str0]
+    _scatter_alpha(link_indexa, fcivec, t1)
+    _scatter_beta(link_indexb, fcivec, t1)
 
     # following line assumes the symmetry
     # that g[p,q,r,s]=g[r,s,p,q] in chemists notation
@@ -416,15 +543,8 @@ def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
 
     # data type of ci1 is now complex
     ci1 = numpy.zeros_like(fcivec, dtype=complex)
-    for str0, tab in enumerate(link_indexa):
-        for a, i, str1, sign in tab:
-            # indices a and i have been switched from pyscf
-            ci1[str0] += sign * t1[i, a, str1]
-    for k in range(na):
-        for str0, tab in enumerate(link_indexb):
-            for a, i, str1, sign in tab:
-                # indices a and i have been switched from pyscf
-                ci1[k, str0] += sign * t1[i, a, k, str1]
+    _gather_alpha(link_indexa, t1, ci1)
+    _gather_beta(link_indexb, t1, ci1)
 
     return ci1
 

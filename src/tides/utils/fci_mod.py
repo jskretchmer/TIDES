@@ -48,19 +48,17 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, casSize, gen=False):
         '''
 
         # Perform FCI calculation using HF MOs
-        cisolver = pyscf.fci.FCI(mf, mf.mo_coeff)
+        #cisolver = pyscf.fci.FCI(mf, mf.mo_coeff)
         toReturn = pyscf.mcscf.CASCI(mf,casSize,casSize)
-        E_FCI, CIcoeffs = cisolver.kernel()
-        E_CI, E_CAS, CASCIcoeffs, CASmo, CASmoE = toReturn.kernel()
-        #E_CI, E_CAS, CASCIcoeffs, CASmo, CASmoE = toReturn.kernel()
+        toRun = toReturn.run()
 
         # NOTE: commented for use by TDFCI; if using this function for RT-pDMET,
         #       uncomment. Currently not used by RT-pDMET
         # E_FCI, CIcoeffs = pyscf.fci.direct_spin1.kernel(h, V, Norbs, Nele)
 
-        CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
-            CIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
-        )
+        #CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
+        #    CIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
+        #)
         #CASCIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
         #    CASCIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
         #)
@@ -73,10 +71,10 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, casSize, gen=False):
 
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
 
-    #return CIcoeffs,mf.mo_coeff, CASCIcoeffs.astype(np.complex128)
+    return toRun.ci,mf.mo_coeff, toRun
     #E_CI, E_CAS, CASCIcoeffsNew, CASmo, CASmoE = toReturn.kernel(ci=CASCIcoeffs)
     #return mf,mf.mo_coeff,CASCIcoeffs.astype(np.complex128)
-    return CIcoeffs
+    #return CIcoeffs
 
 
 #####################################################################

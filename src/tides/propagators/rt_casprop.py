@@ -14,11 +14,12 @@ def propagate(rt_cr,mo_coeff_print):
     rt_cr._integrate_function = rt_integrators.get_integrator(rt_cr) # set integrator
 
     # Set Hamiltonian at current time
-    rt_cr._h1e_orth = rt_cr.get_h1e_orth(rt_cr._h1e_AO_0)
     rt_cr._h1e_mo = rt_cr.get_h1e_mo(rt_cr._h1e_AO_0)
     rt_cr._h2e_mo = rt_cr.get_h2e_mo()
-    rt_cr.mo_to_orth = rt_cr.get_mo_to_orth()
-    rt_cr.orth_to_mo = rt_cr.mo_to_orth.conj().T
+    if rt_cr._castype == 'CASSCF':
+        rt_cr._h1e_orth = rt_cr.get_h1e_orth(rt_cr._h1e_AO_0)
+        rt_cr.mo_to_orth = rt_cr.get_mo_to_orth()
+        rt_cr.orth_to_mo = rt_cr.mo_to_orth.conj().T
 
     # Shift CI Hamiltonian by ground state energy at t=0 to improve numerical stability
     xp,xao = rt_cr.get_xMat()
@@ -39,7 +40,7 @@ def propagate(rt_cr,mo_coeff_print):
             if rt_cr.chkfile is not None:
                 update_chkfile(rt_cr)
 
-        rt_cr._integrate_function(rt_cr,file_output,fmt_str,file_corrdens,eShift,i)
+        rt_cr._integrate_function(rt_cr,eShift)
 
     rt_observables.get_observables(rt_cr)  # Collect observables at final time
     if rt_cr.chkfile is not None:

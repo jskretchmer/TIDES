@@ -30,6 +30,10 @@ def _print_energy(rt_obj):
         for index, frag in enumerate(rt_obj.fragments):
             rt_obj._log.note(f'Fragment {index + 1} Kinetic Energy (AU): {np.sum(kinetic_energy[frag.match_indices])} \n')
 
+def _print_ao_occ(rt_obj):
+    ao_occ = rt_obj._ao_occ
+    rt_obj._log.note(f'Atomic Orbital Occupations: {" ".join(map(str,ao_occ))} \n')
+
 def _print_mo_occ(rt_obj):
     mo_occ = rt_obj._mo_occ
     rt_obj._log.note(f'Molecular Orbital Occupations: {" ".join(map(str,mo_occ))} \n')
