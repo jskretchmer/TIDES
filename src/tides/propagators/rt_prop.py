@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import expm
 from tides.propagators import rt_integrators
 from tides.observables import rt_observables
 from tides.observables import rt_output
@@ -15,7 +16,12 @@ def propagate(rt_scf, mo_coeff_print):
     rt_scf._integrate_function = rt_integrators.get_integrator(rt_scf)
     rt_scf._fock_orth = rt_scf.get_fock_orth(rt_scf.den_ao)
     if rt_scf.prop == 'magnus_step':
-        if not hasattr(rt_scf, 'mo_coeff_orth_old'): rt_scf.mo_coeff_orth_old = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
+        if not hasattr(rt_scf, 'mo_coeff_orth_old'):
+            # Leapfrog needs C'(t0-dt): take one backward step with F'(t0).
+            # Starting from C'(t0) instead makes every odd step a full dt ahead of its
+            # label and reduces the method to first order.
+            u_back = expm(1j * rt_scf.timestep * rt_scf._fock_orth)
+            rt_scf.mo_coeff_orth_old = np.matmul(u_back, rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff))
     if rt_scf.prop == 'magnus_interpol':
         if not hasattr(rt_scf, '_fock_orth_n12dt'): rt_scf._fock_orth_n12dt = np.copy(rt_scf._fock_orth)
         if not hasattr(rt_scf, 'magnus_tolerance'): rt_scf.magnus_tolerance = 1e-8

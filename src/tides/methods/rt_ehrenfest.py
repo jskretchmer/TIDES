@@ -48,6 +48,13 @@ class RT_Ehrenfest(RT_SCF):
         else:
             self.get_mo_coeff_print = get_mo_coeff_print
 
+    def kernel(self, mo_coeff_print=None):
+        # The force from __init__ belongs to the density at construction. Recompute it for the state that is
+        # actually propagated (after excite(), a prepared mo_coeff, new positions, ...). On a restart in the
+        # middle of a nuclear step this is harmless: update_force() removes the same half-kick it added.
+        self.nuc.force = ehrenfest_force.get_force(self)
+        return super().kernel(mo_coeff_print)
+
     def update_time(self):
         current_N = np.mod(round(self.current_time / self.timestep), self.Ne_step * self.N_step)
         current_Ne = np.mod(current_N, self.Ne_step)
@@ -81,8 +88,7 @@ class RT_Ehrenfest(RT_SCF):
         # Generalized overlap is just stacks the restricted overlap, becomes an issue for gradients
         #self.ovlp = self._scf.mol.intor_symmetric('int1e_ovlp')
         self.evals, self.evecs = np.linalg.eigh(self.ovlp)
-        self.orth = _sym_orth(self)
-        self.orth_inv = np.linalg.inv(self.orth)  # keep orth_inv consistent with moved-geometry orth
+        self.orth = _sym_orth(self)  # the property setter keeps orth_inv consistent with the moved geometry
 
     def _update_grad(self):
         self._grad = self._scf.apply(self._grad_func)

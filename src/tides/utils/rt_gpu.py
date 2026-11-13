@@ -12,6 +12,10 @@ def wrap_gpu_mf(mf_gpu):
     real and imaginary parts so the GPU kernels (which require real input)
     are called twice and the results are recombined analytically.
 
+    With RT_Ehrenfest the GPU object follows the moving nuclei (reset() is
+    forwarded to it). The nuclear gradients are still evaluated on the CPU,
+    once per nuclear step.
+
     Parameters
     ----------
     mf_gpu : gpu4pyscf SCF object
@@ -146,12 +150,15 @@ def wrap_gpu_mf(mf_gpu):
         fock_r_np = fock_r.get() if hasattr(fock_r, 'get') else np.asarray(fock_r)
 
         vj_i, vk_i = mf_gpu.get_jk(mf_gpu.mol, dm_i_gpu, hermi=0)
-        vj_tot      = vj_i[0] + vj_i[1]
         vk_eff      = vk_i * _hyb
         if _is_rsh:
             vk_lr  = mf_gpu.get_k(mf_gpu.mol, dm_i_gpu, hermi=0, omega=_omega)
             vk_eff = vk_eff + vk_lr * (_alpha - _hyb)
-        veff_i    = cp.stack([vj_tot - vk_eff[0], vj_tot - vk_eff[1]])
+        if dm_np.ndim == 3:     # unrestricted: J(Pa+Pb) - K(Ps)
+            vj_tot = vj_i[0] + vj_i[1]
+            veff_i = cp.stack([vj_tot - vk_eff[0], vj_tot - vk_eff[1]])
+        else:                   # restricted: J(P) - K(P)/2
+            veff_i = vj_i - 0.5 * vk_eff
         veff_i_np = veff_i.get() if hasattr(veff_i, 'get') else np.asarray(veff_i)
 
         return fock_r_np.astype(np.complex128) + 1j * veff_i_np
@@ -173,17 +180,43 @@ def wrap_gpu_mf(mf_gpu):
         e_real = float(_gpu_energy_tot(dm=dm_r_gpu))
 
         vj_i, vk_i = mf_gpu.get_jk(mf_gpu.mol, dm_i_gpu, hermi=0)
-        vj_tot      = vj_i[0] + vj_i[1]
         vk_eff      = vk_i * _hyb
         if _is_rsh:
             vk_lr  = mf_gpu.get_k(mf_gpu.mol, dm_i_gpu, hermi=0, omega=_omega)
             vk_eff = vk_eff + vk_lr * (_alpha - _hyb)
-        veff_i = cp.stack([vj_tot - vk_eff[0], vj_tot - vk_eff[1]])
-        e_corr = -0.5 * float(cp.einsum('sij,sji', veff_i, dm_i_gpu).real)
+        if dm_np.ndim == 3:     # unrestricted
+            vj_tot = vj_i[0] + vj_i[1]
+            veff_i = cp.stack([vj_tot - vk_eff[0], vj_tot - vk_eff[1]])
+            e_corr = -0.5 * float(cp.einsum('sij,sji', veff_i, dm_i_gpu).real)
+        else:                   # restricted
+            veff_i = vj_i - 0.5 * vk_eff
+            e_corr = -0.5 * float(cp.einsum('ij,ji', veff_i, dm_i_gpu).real)
 
         return e_real + e_corr
 
+    # ── patched reset ─────────────────────────────────────────────────────────
+    # RT_Ehrenfest moves the nuclei with mf.reset(new_mol). The GPU object builds the
+    # Fock matrix and the energy, so it has to follow the same geometry.
+    _cpu_reset = mf.reset
+
+    def _reset(self, mol=None):
+        _cpu_reset(mol)
+        mf_gpu.reset(mol)
+        return self
+
+    # ── patched kernel ────────────────────────────────────────────────────────
+    # RT_Ehrenfest re-solves the SCF at the current geometry when MO occupations are
+    # printed (get_scf_orbitals). Solve it on the GPU object and copy the result over.
+    def _kernel(self, *args, **kwargs):
+        mf_gpu.kernel(*args, **kwargs)
+        _np = lambda a: a.get() if hasattr(a, 'get') else np.asarray(a)
+        self.mo_coeff, self.mo_energy, self.mo_occ = _np(mf_gpu.mo_coeff), _np(mf_gpu.mo_energy), _np(mf_gpu.mo_occ)
+        self.e_tot, self.converged = float(mf_gpu.e_tot), bool(mf_gpu.converged)
+        return self.e_tot
+
     mf.get_fock   = types.MethodType(_get_fock,   mf)
     mf.energy_tot = types.MethodType(_energy_tot, mf)
+    mf.reset      = types.MethodType(_reset,      mf)
+    mf.kernel     = types.MethodType(_kernel,     mf)
 
     return mf

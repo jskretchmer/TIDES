@@ -26,13 +26,13 @@ def single_excite(rt_scf, excitation_alpha_from=None, excitation_alpha_to=None, 
     #if the _to is None, then the electron will be ionized.
 
     if rt_scf.nmat == 1:
-        if rt_scf.occ[excitation_alpha-1] == 0:
-            raise Not(f'Cannot excite electron from index {excitation_alpha} as it is unoccupied.')
+        if rt_scf.occ[excitation_alpha_from-1] == 0:
+            raise ValueError(f'Cannot excite electron from index {excitation_alpha_from} as it is unoccupied.')
+        if excitation_alpha_to is not None and rt_scf.occ[excitation_alpha_to-1] == 2:
+            raise ValueError(f'Cannot excite electron to index {excitation_alpha_to} as it is already doubly occupied.')
         rt_scf.occ[excitation_alpha_from-1] -= 1  # remove
 
         if excitation_alpha_to is not None:
-            if rt_scf.occ[excitation_alpha_to-1] == 2:
-                raise Not(f'Cannot excite electron to index {excitation_alpha_to} as it is already doubly occupied.')
             rt_scf.occ[excitation_alpha_to-1] += 1  # add
     # Unrestricted case (alpha/beta)
     else:
@@ -110,14 +110,14 @@ def restart_from_chkfile(rt_scf):
                         b1 = idx
                         break
                 rt_scf._scf.mo_coeff = np.loadtxt(chk_lines[2:b1], dtype=np.complex128)
-                rt_scf._scf._fock_orth_n12dt = np.loadtxt(chk_lines[b1+1:a1], dtype=np.complex128)
+                rt_scf._fock_orth_n12dt = np.loadtxt(chk_lines[b1+1:a1], dtype=np.complex128)
             elif rt_scf.prop == 'magnus_step':
                 for idx, line in enumerate(chk_lines):
                     if 'MO Coeff Orth Old' in line:
                         b1 = idx
                         break
                 rt_scf._scf.mo_coeff = np.loadtxt(chk_lines[2:b1], dtype=np.complex128)
-                rt_scf._scf.mo_coeff_orth_old = np.loadtxt(chk_lines[b1+1:a1], dtype=np.complex128)
+                rt_scf.mo_coeff_orth_old = np.loadtxt(chk_lines[b1+1:a1], dtype=np.complex128)
             else:
                 rt_scf._scf.mo_coeff = np.loadtxt(chk_lines[2:a1], dtype=np.complex128)
         else:
@@ -158,9 +158,9 @@ def restart_from_chkfile(rt_scf):
                         break
 
                 mo_alpha0 = np.loadtxt(chk_lines[3:b0], dtype=np.complex128)
-                mo_beta0 = np.loadtxt(chk_lines[b0+1:], dtype=np.complex128)
+                mo_beta0 = np.loadtxt(chk_lines[b0+1:a1], dtype=np.complex128)   # stop before the nuclear block, if any
                 rt_scf._scf.mo_coeff = np.stack((mo_alpha0, mo_beta0))
-        if hasattr(rt_scf, "nuc") and b1 is not None:
+        if hasattr(rt_scf, "nuc") and a1 is not None:
             rt_scf.nuc.pos = np.loadtxt(chk_lines[a1+1:a2], dtype=np.float64)
             rt_scf.nuc.vel = np.loadtxt(chk_lines[a2+1:a3], dtype=np.float64)
             rt_scf.nuc.force = np.loadtxt(chk_lines[a3+1:], dtype=np.float64)

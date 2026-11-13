@@ -38,9 +38,17 @@ def magnus_step(rt_scf):
     Leapfrog: uses the Fock at the current time to propagate over 2dt.
     This is explicit, cheap, but not self-consistent → energy drift.
     For better energy conservation use magnus_interpol or etrs.
+
+    Needs C'(t0-dt) on the first step; rt_prop.propagate() builds it by one
+    backward step. Not suited to delta kicks or CAPs (the two interleaved
+    chains see them differently).
     '''
 
     fock_orth = rt_scf._fock_orth
+
+    # Orthogonal-basis coefficients at the current time. Taken BEFORE update_time(),
+    # which moves the nuclei (and the orthogonaliser) for Ehrenfest objects.
+    mo_coeff_orth_cur = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
 
     # Update time, mol is updated here if rt_scf is Ehrenfest obj
     rt_scf.update_time()
@@ -50,7 +58,7 @@ def magnus_step(rt_scf):
 
     mo_coeff_orth_new = np.matmul(u, rt_scf.mo_coeff_orth_old)
 
-    rt_scf.mo_coeff_orth_old = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
+    rt_scf.mo_coeff_orth_old = mo_coeff_orth_cur
     rt_scf._scf.mo_coeff = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_new)
     rt_scf.den_ao = rt_scf._scf.make_rdm1(mo_occ=rt_scf.occ)
     rt_scf._fock_orth = rt_scf.get_fock_orth(rt_scf.den_ao)
@@ -179,19 +187,33 @@ def rk4(rt_scf):
     '''
     C'(t + dt) = C'(t) + (k1/6 + k2/3 + k3/3 + k4/6)
     dC' = -i * dt * (F'C')
-    Note: uses F at the start of the step throughout (no midpoint Fock update).
+    Note: uses F at the start of the step throughout (no midpoint Fock update),
+    so this is a 4th-order Taylor expansion of exp(-i*dt*F(t)) and only FIRST
+    order in dt overall.
 
-    Non-unitary: density norm drifts over time. QR re-orthogonalization is applied
-    after each step to limit norm drift and prevent numerical blowup, but energy
-    conservation is still poor compared to unitary integrators.
+    Non-unitary and only conditionally stable: it needs dt*max|eps| < ~2.8,
+    where eps are the Fock eigenvalues (core orbitals set the limit). The norm
+    drift is deliberately left visible. Do not re-orthogonalise the orbitals
+    here: that hides a failed integration behind an exact electron count and
+    cancels the norm loss of a complex absorbing potential.
     '''
 
     fock_orth = rt_scf._fock_orth
 
+    if not getattr(rt_scf, '_rk4_stability_checked', False):
+        rt_scf._rk4_stability_checked = True
+        eps_max = np.abs(np.linalg.eigvals(fock_orth)).max()
+        if rt_scf.timestep * eps_max > 2.78:
+            rt_scf._log.warn(f'rk4: timestep * max|Fock eigenvalue| = {rt_scf.timestep * eps_max:.2f} exceeds the '
+                             'stability limit (~2.8). Expect electron loss or blow-up; reduce the timestep or use '
+                             'magnus_interpol, etrs or ep_pc.')
+
+    # Orthogonal-basis coefficients, taken BEFORE update_time() moves the nuclei
+    # (and the orthogonaliser) for Ehrenfest objects.
+    mo_coeff_orth = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
+
     # Update time, mol is updated here if rt_scf is Ehrenfest obj
     rt_scf.update_time()
-
-    mo_coeff_orth = rt_scf.rotate_coeff_to_orth(rt_scf._scf.mo_coeff)
 
     # k1
     k1 = -1j * rt_scf.timestep * (np.matmul(fock_orth, mo_coeff_orth))
@@ -209,11 +231,6 @@ def rk4(rt_scf):
     k4 = -1j * rt_scf.timestep * (np.matmul(fock_orth, mo_coeff_orth_3))
 
     mo_coeff_orth_new = mo_coeff_orth + (k1/6 + k2/3 + k3/3 + k4/6)
-
-    # QR re-orthogonalization: restores column orthonormality lost due to non-unitarity.
-    # Prevents norm blowup but does not make RK4 energy-conserving.
-    Q, _ = np.linalg.qr(mo_coeff_orth_new)
-    mo_coeff_orth_new = Q
 
     mo_coeff_ao_new = rt_scf.rotate_coeff_to_ao(mo_coeff_orth_new)
 
@@ -513,7 +530,12 @@ def cfm4(rt_scf):
     This avoids the catastrophic amplification of the forward Lagrange extrapolation
     approach (which uses weights up to ±4 for large dt) and gives stable energy conservation.
 
-    Cost: 2+ Fock builds/step.  Order: 4 (with converged self-consistency).
+    Cost: 2+ Fock builds/step.
+    Order: 2 as implemented. The linear interpolation of F to the quadrature
+    nodes has an O(dt^2) error, which caps the scheme at second order (measured
+    1.4-1.9 on water/6-31G, with larger errors than etrs at the same dt). Fourth
+    order needs F at the nodes to O(dt^3), e.g. a quadratic through F(t-dt),
+    F(t), F(t+dt).
     See: Gómez Pueyo et al., JCTC 2018, eq 54;
          Blanes & Moan, Appl. Numer. Math. 56, 1519 (2006), eq 43.
     '''
