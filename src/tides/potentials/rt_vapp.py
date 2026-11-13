@@ -41,7 +41,8 @@ class ElectricField:
         return self.amplitude * np.sin(self.frequency * rt_scf.current_time + self.phase)
 
     def calculate_field_energy(self, rt_scf):
-        if self.field_type == 'delta' and rt_scf.current_time == self.center:
+        # current_time is an accumulated sum of timesteps (0.2+0.2+0.2 != 0.6), so compare on the time grid
+        if self.field_type == 'delta' and abs(rt_scf.current_time - self.center) < 0.5 * rt_scf.timestep:
             return self.delta_energy()
 
         elif self.field_type == 'gaussian':

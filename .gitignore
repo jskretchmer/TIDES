@@ -75,3 +75,4 @@ tmp/
 
 # Local-only edit/scratch files (kept on disk, not tracked)
 src/tides/*_edit.py
+.venv-docs/

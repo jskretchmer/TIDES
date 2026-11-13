@@ -8,11 +8,22 @@ from tides.observables import rt_observables
 from tides.observables import rt_output
 from tides.utils.rt_utils import restart_from_chkfile
 import os
+import warnings
 
 
 '''
 Real-time SCF Class
 '''
+
+def _orth_inverse(orth):
+    orth = np.asarray(orth)
+    if orth.shape[-1] != orth.shape[-2]:
+        raise ValueError(
+            f'The orthogonalisation matrix is {orth.shape[-2]}x{orth.shape[-1]}: the AO basis is (near-)linearly '
+            f'dependent and {orth.shape[-2] - orth.shape[-1]} combination(s) were dropped by canonical '
+            'orthogonalisation. TiDES needs a square orthogonaliser: remove the offending diffuse functions, '
+            'or pass a square `orth` (e.g. S^-1/2).')
+    return inv(orth)
 
 class RT_SCF:
     def __init__(self, scf, timestep, max_time, filename=None, prop=None, frequency=1, orth=None, chkfile='tides.chk', verbose=3):
@@ -22,7 +33,10 @@ class RT_SCF:
         self.max_time = max_time
         self._scf = scf
         self.ovlp = self._scf.get_ovlp()
-        self.occ = self._scf.get_occ()
+        # Use the occupations the SCF object holds (keeps non-Aufbau / Delta-SCF references);
+        # fall back to Aufbau only if there are none. Copy: excite() edits self.occ in place.
+        mo_occ = getattr(self._scf, 'mo_occ', None)
+        self.occ = np.array(mo_occ, copy=True) if mo_occ is not None else self._scf.get_occ()
 
         self.verbose = verbose
         self._potential = []
@@ -33,8 +47,7 @@ class RT_SCF:
         if orth is None: orth = addons.canonical_orth_(self.ovlp)
         self.prop = prop
 
-        self.orth = orth
-        self.orth_inv = inv(self.orth)  # cached inverse for rotate_coeff_to_orth
+        self.orth = orth  # the property setter also refreshes the cached inverse, self.orth_inv
 
         if filename is None:
             self._log = logger.Logger(verbose=self.verbose)
@@ -54,13 +67,35 @@ class RT_SCF:
         # Pass chkfile=None explicitly to disable chkfile use entirely
         self.chkfile = chkfile
         if self.chkfile is not None and os.path.exists(self.chkfile):
+            shape_before = np.shape(self._scf.mo_coeff)
             restart_from_chkfile(self)
+            if np.shape(self._scf.mo_coeff) != shape_before:
+                raise ValueError(
+                    f'chkfile {self.chkfile} holds MO coefficients of shape {np.shape(self._scf.mo_coeff)}, but this '
+                    f'calculation has shape {shape_before}. It belongs to a different calculation: delete it, or '
+                    'pass another chkfile (chkfile=None disables checkpointing).')
             self.den_ao = self._scf.make_rdm1(mo_occ=self.occ)
+            if round(self.max_time / self.timestep) <= round(self.current_time / self.timestep):
+                msg = (f'Restarted from {self.chkfile} at t = {self.current_time} au, which is at or past '
+                       f'max_time = {self.max_time} au: no steps will be taken. If this is meant to be a new '
+                       'calculation, delete the chkfile or pass a different one (chkfile=None disables it).')
+                self._log.warn(msg)
+                warnings.warn(msg)
         else:
             self.current_time = 0
         self._t0 = self.current_time
 
         rt_observables._init_observables(self)
+
+    # The orthogonaliser and its inverse must always change together.
+    @property
+    def orth(self):
+        return self._orth
+
+    @orth.setter
+    def orth(self, value):
+        self._orth = value
+        self.orth_inv = _orth_inverse(value)
 
     def istype(self, type_code):
         if isinstance(type_code, type):

@@ -136,14 +136,16 @@ def get_observables(rt_obj):
     if rt_obj.observables.get('plane_partition_charge', False):
         rt_obj.grids, rt_obj.atom_weights = get_weights(rt_obj._scf.mol)
     if rt_obj.istype('RT_Ehrenfest'):
-        if 'mo_occ' in rt_obj.observables or 'mo_occ_separate' in rt_obj.observables:
+        # Only rebuild the projection orbitals (a full SCF by default) when MO occupations are requested.
+        # The keys always exist in the dict, so test the flags, not membership.
+        if rt_obj.observables.get('mo_occ') or rt_obj.observables.get('mo_occ_separate'):
             _update_mo_coeff_print(rt_obj)
         if rt_obj.hirshfeld:
             rt_obj.grids, rt_obj.atom_weights = get_weights(rt_obj._scf.mol)
 
+    # Compute here; update_output() does the printing (once per time point).
     for key, function in rt_obj._observables_functions.items():
           function[0](rt_obj)
-          function[1](rt_obj)
 
     rt_output.update_output(rt_obj)
 
@@ -370,7 +372,7 @@ def get_spin_square(rt_obj):
     else:
         mo_coeff = rt_obj._scf.mo_coeff[:,rt_obj.occ>0]
 
-    rt_obj._s2, _ = rt_obj._scf.spin_square(mo_coeff)
+    rt_obj._s2, rt_obj._2s_p1 = rt_obj._scf.spin_square(mo_coeff)
 
 
 def get_plane_partition_charge(rt_obj):

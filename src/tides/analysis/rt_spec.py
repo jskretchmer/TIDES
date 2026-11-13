@@ -37,13 +37,10 @@ def abs_spec(time, pole, kick_str=1, pad=None, damp=None, hann_damp=None, prepro
 
     n = pole_t.shape[0]
     dt = time[1] - time[0]              # Assumes constant timestep
-    period = (n-1) * dt - time[0]
-    dw = 2.0 * np.pi / period
+    dw = 2.0 * np.pi / (n * dt)         # spacing of the FFT bins: bin k is at k * 2pi / (n * dt)
 
     m = int(n / 2)                      # Include only positive frequencies
-    wmin = 0.0
-    wmax = m * dw
-    w = np.linspace(wmin, wmax, m)
+    w = dw * np.arange(m)
 
     osc_str = []
     for i in range(pole_t.shape[1]):
